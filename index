@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes, viewport-fit=cover">
+  <title>大家TALKS · 轻论坛</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+      background: #f5f7fb; color: #1e293b; line-height: 1.5; min-height: 100vh;
+      padding: 16px 12px 40px;
+    }
+    #app { max-width: 720px; margin: 0 auto; }
+    .card {
+      background: #ffffff; border-radius: 20px; padding: 20px 18px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.03), 0 1px 2px rgba(0,0,0,0.05);
+      margin-bottom: 18px; border: 1px solid #f0f2f5;
+    }
+    .header-title { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+    h1 {
+      font-size: 28px; font-weight: 650; letter-spacing: -0.3px;
+      background: linear-gradient(135deg, #0f2b3d 0%, #1b4a6b 80%);
+      -webkit-background-clip: text; background-clip: text; color: transparent;
+    }
+    .badge { background: #e6edf4; color: #1e4b6e; font-size: 13px; padding: 5px 10px; border-radius: 30px; }
+    button {
+      background: #f9fcff; border: 1px solid #dde3e9; border-radius: 40px; padding: 10px 18px;
+      font-size: 15px; font-weight: 500; color: #1e3b5c; cursor: pointer; transition: 0.2s;
+      display: inline-flex; align-items: center; gap: 8px;
+    }
+    button.primary { background: #1e4b6e; border-color: #1e4b6e; color: white; }
+    button.small { padding: 6px 14px; font-size: 13px; }
+    .topic-preview { cursor: pointer; }
+    .topic-title { font-size: 20px; font-weight: 650; margin-bottom: 6px; color: #0b2a41; }
+    .topic-meta { display: flex; gap: 18px; font-size: 14px; color: #5e7180; margin-top: 8px; }
+    .comment-item { padding: 16px 0; border-bottom: 1px solid #edf1f5; }
+    .comment-header { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; flex-wrap: wrap; }
+    .comment-author { font-weight: 600; color: #1a4057; }
+    .comment-time { font-size: 12px; color: #7e95a5; }
+    .pinned-badge {
+      background: #e1b530; color: #1e3b2c; padding: 2px 10px; border-radius: 20px;
+      font-size: 12px; font-weight: 500; margin-left: 8px;
+    }
+    .comment-actions { display: flex; gap: 20px; align-items: center; flex-wrap: wrap; }
+    .action-btn {
+      background: none; border: none; padding: 5px 8px; font-size: 14px;
+      color: #55758b; cursor: pointer; border-radius: 30px; display: inline-flex; align-items: center; gap: 6px;
+    }
+    .action-btn:hover { background: #eaf0f6; }
+    .reply-section { margin-left: 28px; margin-top: 12px; padding-left: 16px; border-left: 2px solid #d7e2ea; }
+    .input-group { display: flex; gap: 10px; margin: 16px 0 8px; flex-wrap: wrap; }
+    input, textarea {
+      flex: 1; padding: 14px 16px; border: 1.5px solid #dee6ed; border-radius: 24px;
+      font-size: 15px; background: #ffffff; font-family: inherit;
+    }
+    input:focus, textarea:focus { outline: none; border-color: #1e4b6e; }
+    .modal-mask {
+      position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.25);
+      backdrop-filter: blur(3px); display: flex; align-items: center; justify-content: center; z-index: 1000;
+    }
+    .modal-card {
+      background: white; border-radius: 28px; padding: 24px 22px; width: 90%; max-width: 460px;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.08);
+    }
+    .toast-tip {
+      background: #1e2f3c; color: white; padding: 10px 18px; border-radius: 40px;
+      position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+      opacity: 0.9; z-index: 1100;
+    }
+    .pin-btn { color: #b68b2c; }
+  </style>
+</head>
+<body>
+<div id="app">
+  <!-- 首页视图 -->
+  <div v-if="view === 'home'">
+    <div class="card" style="padding: 18px 18px 14px;">
+      <div class="header-title">
+        <h1><i class="fas fa-comments" style="margin-right: 8px; color: #1e4b6e;"></i>大家TALKS</h1>
+        <span class="badge"><i class="far fa-calendar-alt"></i> 往期 · 此刻</span>
+      </div>
+      <div class="flex-row" style="display: flex; justify-content: space-between; align-items: center;">
+        <p style="color: #446d82;">轻声讨论，听见彼此</p>
+        <button class="primary" @click="openCreateTopicFlow">
+          <i class="fas fa-plus-circle"></i> 创建话题
+        </button>
+      </div>
+    </div>
+
+    <div v-if="topics.length === 0" class="card empty-state" style="text-align: center;">
+      <i class="far fa-folder-open" style="font-size: 40px; opacity: 0.5; margin-bottom: 12px;"></i>
+      <p>还没有话题，点击「创建话题」发起第一个讨论吧。</p>
+    </div>
+    <div v-for="topic in sortedTopics" :key="topic.id" class="card topic-preview" @click="goToDetail(topic.id)">
+      <div class="topic-title">{{ topic.title }}</div>
+      <div class="topic-preview-content" style="color: #36586b; opacity:0.85; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;">{{ topic.content }}</div>
+      <div class="topic-meta">
+        <span><i class="far fa-comment-dots"></i> {{ getCommentCount(topic) }} 条留言</span>
+        <span><i class="far fa-clock"></i> {{ formatTime(topic.createdAt) }}</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 详情页 -->
+  <div v-else-if="view === 'detail' && currentTopic">
+    <div style="margin-bottom: 10px; display: flex; justify-content: space-between;">
+      <button class="small" @click="view = 'home'"><i class="fas fa-arrow-left"></i> 返回首页</button>
+      <span v-if="isAdmin">
+        <button class="small" @click="openEditTopicModal"><i class="fas fa-edit"></i> 编辑话题</button>
+      </span>
+    </div>
+
+    <div class="card">
+      <div style="display: flex; align-items: center; justify-content: space-between;">
+        <h2 style="font-size: 24px; font-weight: 650; color: #103c54;">{{ currentTopic.title }}</h2>
+        <span v-if="isAdmin" class="admin-tag" style="background:#d4e2ed; padding:3px 10px; border-radius:20px;"><i class="fas fa-shield-alt"></i> 管理员</span>
+      </div>
+      <div style="margin: 12px 0 8px; color: #2f536b; white-space: pre-wrap;">{{ currentTopic.content }}</div>
+      <div class="topic-meta">
+        <span><i class="far fa-calendar"></i> 发布于 {{ formatTime(currentTopic.createdAt) }}</span>
+        <span><i class="far fa-message"></i> {{ sortedComments.length }} 评论</span>
+      </div>
+    </div>
+
+    <!-- 评论区 -->
+    <div class="card" style="padding-bottom: 10px;">
+      <h3 style="display: flex; gap: 8px; margin-bottom: 12px;">
+        <span style="font-size: 1.4rem;">📢</span> 热议 · 大家说 
+        <span style="font-size:14px; margin-left: auto; color:#5f8399;">👍 点赞越多越靠前 (置顶优先)</span>
+      </h3>
+      
+      <!-- 发表评论，昵称可填 -->
+      <div class="input-group">
+        <input type="text" v-model="newCommentAuthor" placeholder="你的昵称 (选填)" style="max-width: 150px;" />
+        <button class="primary" @click="submitComment">提交评论</button>
+      </div>
+      <textarea v-model="newCommentContent" placeholder="写下你的想法…" rows="2" style="width:100%; margin-bottom: 16px;"></textarea>
+
+      <div v-if="sortedComments.length === 0" style="padding: 24px 0; text-align: center; color: #7e99ab;">
+        <i class="far fa-comment"></i> 还没有评论，快来抢沙发~
+      </div>
+
+      <!-- 评论列表 -->
+      <div v-for="comment in sortedComments" :key="comment.id" class="comment-item">
+        <div class="comment-header">
+          <span class="comment-author">{{ comment.authorName || '匿名' }}</span>
+          <span v-if="comment.isPinned" class="pinned-badge"><i class="fas fa-thumbtack"></i> 置顶</span>
+          <span class="comment-time">{{ formatTime(comment.createdAt) }}</span>
+          <span style="margin-left: auto; display: flex; gap: 6px;">
+            <!-- 管理员置顶/取消置顶按钮 -->
+            <button v-if="isAdmin" class="action-btn pin-btn" @click="togglePin(comment)" :title="comment.isPinned ? '取消置顶' : '置顶评论'">
+              <i :class="comment.isPinned ? 'fas fa-thumbtack' : 'fas fa-thumbtack'" style="transform: rotate(45deg);"></i>
+            </button>
+            <!-- 删除评论 (管理员或作者) -->
+            <button v-if="isAdmin || comment.authorId === visitorId" class="action-btn" @click="deleteComment(comment.id)" style="color: #b55a5a;">
+              <i class="far fa-trash-alt"></i>
+            </button>
+          </span>
+        </div>
+        <div class="comment-content">{{ comment.content }}</div>
+        <div class="comment-actions">
+          <button class="action-btn" @click="toggleLike(comment)">
+            <i :class="hasLiked(comment) ? 'fas fa-heart' : 'far fa-heart'" :style="{color: hasLiked(comment) ? '#cf3e3e' : ''}"></i>
+            <span>{{ comment.likes ? comment.likes.length : 0 }}</span>
+          </button>
+          <button class="action-btn" @click="toggleReplyInput(comment.id)">
+            <span style="font-size: 1.2rem; margin-right: 4px;">😊</span> 回复
+          </button>
+        </div>
+        
+        <!-- 回复输入框 -->
+        <div v-if="replyInputVisible[comment.id]" style="margin: 12px 0 4px 8px;">
+          <div class="input-group" style="margin-top:0;">
+            <input type="text" v-model="replyAuthor[comment.id]" placeholder="称呼" style="max-width:110px;" />
+            <input type="text" v-model="replyContent[comment.id]" placeholder="写下回复…" style="flex:2;" />
+            <button class="small primary" @click="submitReply(comment.id)">发送</button>
+            <button class="small" @click="toggleReplyInput(comment.id, false)">取消</button>
+          </div>
+        </div>
+
+        <!-- 回复列表 -->
+        <div class="reply-section" v-if="comment.replies && comment.replies.length">
+          <div v-for="reply in comment.replies" :key="reply.id" class="reply-item">
+            <div style="display: flex; align-items: baseline; gap: 12px;">
+              <span style="font-weight: 600;">{{ reply.authorName || '匿名' }}</span>
+              <span style="font-size: 12px; color: #7c99ae;">{{ formatTime(reply.createdAt) }}</span>
+              <span v-if="isAdmin || reply.authorId === visitorId" style="margin-left: auto;">
+                <button class="action-btn" @click="deleteReply(comment.id, reply.id)"><i class="far fa-trash-alt"></i></button>
+              </span>
+            </div>
+            <div style="margin: 5px 0 0 6px;">{{ reply.content }}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 模态框 -->
+  <div v-if="modal.show" class="modal-mask" @click.self="closeModal">
+    <div class="modal-card">
+      <h3 style="margin-bottom: 18px;">{{ modal.title }}</h3>
+      <div v-if="modal.type === 'password'">
+        <p style="margin-bottom: 16px;"><i class="fas fa-lock"></i> 只有管理员才能创建话题</p>
+        <input type="password" v-model="modal.passwordInput" placeholder="输入密码" @keyup.enter="modal.onConfirm" style="width:100%;" />
+        <div style="display: flex; gap:12px; margin-top:24px;">
+          <button class="primary" @click="modal.onConfirm">验证</button>
+          <button @click="closeModal">取消</button>
+        </div>
+      </div>
+      <div v-else-if="modal.type === 'createTopic'">
+        <label>话题标题</label>
+        <input v-model="modal.topicTitle" style="width:100%; margin:8px 0 16px;" />
+        <label>引导内容</label>
+        <textarea v-model="modal.topicContent" rows="3" style="width:100%; margin:8px 0 16px;"></textarea>
+        <div style="display: flex; gap:12px;">
+          <button class="primary" @click="modal.onConfirm">发布话题</button>
+          <button @click="closeModal">取消</button>
+        </div>
+      </div>
+      <div v-else-if="modal.type === 'editTopic'">
+        <label>修改标题</label>
+        <input v-model="modal.topicTitle" style="width:100%; margin:8px 0 16px;" />
+        <label>修改内容</label>
+        <textarea v-model="modal.topicContent" rows="3" style="width:100%; margin:8px 0 16px;"></textarea>
+        <div style="display: flex; gap:12px;">
+          <button class="primary" @click="modal.onConfirm">保存修改</button>
+          <button @click="closeModal">取消</button>
+        </div>
+      </div>
+      <p v-if="modal.error" style="color: #c74545; margin-top:12px;">{{ modal.error }}</p>
+    </div>
+  </div>
+
+  <div v-if="toastMessage" class="toast-tip">{{ toastMessage }}</div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/vue@3.2.47/dist/vue.global.prod.js"></script>
+<script>
+  const { createApp, ref, reactive, computed, watch, onMounted } = Vue;
+
+  function genId() { return Date.now() + '-' + Math.random().toString(36).substr(2, 8); }
+  const STORAGE_KEY = 'dajia_talks_app';
+
+  const app = createApp({
+    setup() {
+      const view = ref('home');
+      const currentTopicId = ref(null);
+      const topics = ref([]);
+      const visitorId = ref(localStorage.getItem('talks_visitor_id') || genId());
+      localStorage.setItem('talks_visitor_id', visitorId.value);
+      const isAdmin = ref(false);
+      
+      const newCommentAuthor = ref('');
+      const newCommentContent = ref('');
+      const replyInputVisible = reactive({});
+      const replyAuthor = reactive({});
+      const replyContent = reactive({});
+      
+      const toastMessage = ref('');
+      let toastTimer = null;
+      const showToast = (msg) => {
+        toastMessage.value = msg;
+        if (toastTimer) clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => { toastMessage.value = ''; }, 2000);
+      };
+
+      const modal = reactive({
+        show: false, type: '', title: '', passwordInput: '',
+        topicTitle: '', topicContent: '', error: '', onConfirm: null,
+      });
+      const closeModal = () => {
+        modal.show = false;
+        modal.passwordInput = '';
+        modal.error = '';
+        modal.topicTitle = '';
+        modal.topicContent = '';
+      };
+
+      const openCreateTopicFlow = () => {
+        modal.type = 'password';
+        modal.title = '管理员验证';
+        modal.passwordInput = '';
+        modal.onConfirm = () => {
+          if (modal.passwordInput === 'Haday') {
+            isAdmin.value = true;
+            closeModal();
+            modal.type = 'createTopic';
+            modal.title = '发起新话题';
+            modal.topicTitle = '';
+            modal.topicContent = '大家可以在此留言，说说自己的心声~';
+            modal.onConfirm = createTopicHandler;
+            modal.show = true;
+            showToast('✅ 验证成功');
+          } else { modal.error = '密码错误'; }
+        };
+        modal.show = true;
+      };
+
+      const createTopicHandler = () => {
+        const title = modal.topicTitle.trim();
+        const content = modal.topicContent.trim();
+        if (!title) { showToast('标题不能为空'); return; }
+        topics.value.push({
+          id: genId(), title, content: content || '欢迎留言~',
+          createdAt: new Date().toISOString(), comments: []
+        });
+        saveToStorage();
+        closeModal();
+        showToast('✨ 话题发布成功');
+      };
+
+      const openEditTopicModal = () => {
+        if (!currentTopic.value) return;
+        modal.type = 'editTopic';
+        modal.title = '编辑话题';
+        modal.topicTitle = currentTopic.value.title;
+        modal.topicContent = currentTopic.value.content;
+        modal.onConfirm = () => {
+          const newTitle = modal.topicTitle.trim();
+          const newContent = modal.topicContent.trim();
+          if (!newTitle) { showToast('标题不能为空'); return; }
+          const topic = topics.value.find(t => t.id === currentTopicId.value);
+          if (topic) { topic.title = newTitle; topic.content = newContent; saveToStorage(); showToast('话题已更新'); }
+          closeModal();
+        };
+        modal.show = true;
+      };
+
+      const currentTopic = computed(() => topics.value.find(t => t.id === currentTopicId.value));
+      const sortedTopics = computed(() => [...topics.value].sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt)));
+      
+      const getCommentCount = (topic) => {
+        let count = topic.comments.length;
+        topic.comments.forEach(c => { if (c.replies) count += c.replies.length; });
+        return count;
+      };
+      const formatTime = (iso) => {
+        if (!iso) return '';
+        const d = new Date(iso);
+        return `${d.getMonth()+1}/${d.getDate()} ${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`;
+      };
+
+      const goToDetail = (topicId) => {
+        currentTopicId.value = topicId;
+        view.value = 'detail';
+        Object.keys(replyInputVisible).forEach(k => delete replyInputVisible[k]);
+      };
+
+      // 热评排序：置顶优先，然后点赞数，然后时间
+      const sortedComments = computed(() => {
+        if (!currentTopic.value) return [];
+        const comments = [...currentTopic.value.comments];
+        return comments.sort((a, b) => {
+          if (a.isPinned && !b.isPinned) return -1;
+          if (!a.isPinned && b.isPinned) return 1;
+          const aLikes = a.likes ? a.likes.length : 0;
+          const bLikes = b.likes ? b.likes.length : 0;
+          if (aLikes !== bLikes) return bLikes - aLikes;
+          return new Date(b.createdAt) - new Date(a.createdAt);
+        });
+      });
+
+      const hasLiked = (comment) => comment.likes && comment.likes.includes(visitorId.value);
+      const toggleLike = (comment) => {
+        if (!comment.likes) comment.likes = [];
+        const idx = comment.likes.indexOf(visitorId.value);
+        idx === -1 ? comment.likes.push(visitorId.value) : comment.likes.splice(idx, 1);
+        saveToStorage();
+      };
+
+      // 置顶切换
+      const togglePin = (comment) => {
+        if (!isAdmin.value) return;
+        comment.isPinned = !comment.isPinned;
+        saveToStorage();
+        showToast(comment.isPinned ? '📌 已置顶' : '📌 取消置顶');
+      };
+
+      const submitComment = () => {
+        const content = newCommentContent.value.trim();
+        if (!content) { showToast('评论内容不能为空'); return; }
+        const topic = currentTopic.value;
+        if (!topic) return;
+        const author = newCommentAuthor.value.trim() || '匿名';
+        const newComment = {
+          id: genId(),
+          authorName: author,
+          authorId: visitorId.value,
+          content,
+          createdAt: new Date().toISOString(),
+          likes: [],
+          replies: [],
+          isPinned: false,
+        };
+        topic.comments.push(newComment);
+        saveToStorage();
+        newCommentContent.value = '';
+        showToast('💬 评论成功');
+      };
+
+      const toggleReplyInput = (commentId, forceState) => {
+        if (forceState === false) {
+          delete replyInputVisible[commentId];
+          delete replyAuthor[commentId];
+          delete replyContent[commentId];
+        } else {
+          replyInputVisible[commentId] = !replyInputVisible[commentId];
+          if (!replyAuthor[commentId]) replyAuthor[commentId] = '';
+          if (!replyContent[commentId]) replyContent[commentId] = '';
+        }
+      };
+      
+      const submitReply = (commentId) => {
+        const topic = currentTopic.value;
+        const comment = topic.comments.find(c => c.id === commentId);
+        if (!comment) return;
+        const content = (replyContent[commentId] || '').trim();
+        if (!content) { showToast('回复不能为空'); return; }
+        const author = replyAuthor[commentId]?.trim() || '匿名';
+        const reply = {
+          id: genId(),
+          authorName: author,
+          authorId: visitorId.value,
+          content,
+          createdAt: new Date().toISOString(),
+        };
+        if (!comment.replies) comment.replies = [];
+        comment.replies.push(reply);
+        saveToStorage();
+        toggleReplyInput(commentId, false);
+        showToast('回复已发布');
+      };
+
+      const deleteComment = (commentId) => {
+        const topic = currentTopic.value;
+        if (!topic) return;
+        const idx = topic.comments.findIndex(c => c.id === commentId);
+        if (idx !== -1) { topic.comments.splice(idx, 1); saveToStorage(); showToast('评论已删除'); }
+      };
+      const deleteReply = (commentId, replyId) => {
+        const topic = currentTopic.value;
+        const comment = topic.comments.find(c => c.id === commentId);
+        if (comment && comment.replies) {
+          const rIdx = comment.replies.findIndex(r => r.id === replyId);
+          if (rIdx !== -1) { comment.replies.splice(rIdx, 1); saveToStorage(); showToast('回复已删除'); }
+        }
+      };
+
+      const saveToStorage = () => localStorage.setItem(STORAGE_KEY, JSON.stringify(topics.value));
+      const loadFromStorage = () => {
+        const stored = localStorage.getItem(STORAGE_KEY);
+        if (stored) {
+          try { topics.value = JSON.parse(stored); } catch(e){}
+        }
+        if (!topics.value.length) {
+          const sample = {
+            id: genId(), title: '欢迎来到「大家TALKS」',
+            content: '这里是一个温暖的小角落，可以聊聊生活、分享灵感。点击下方留言，说说你今天的心情吧~',
+            createdAt: new Date().toISOString(),
+            comments: [
+              { id: genId(), authorName: '小助手', authorId: 'system', content: '我先来！希望每个人都能自在表达。', createdAt: new Date(Date.now()-3600000).toISOString(), likes: [visitorId.value], replies: [], isPinned: false },
+            ]
+          };
+          topics.value.push(sample);
+          saveToStorage();
+        }
+      };
+
+      onMounted(() => loadFromStorage());
+      watch(topics, () => saveToStorage(), { deep: true });
+
+      return {
+        view, topics, currentTopicId, currentTopic, sortedTopics,
+        visitorId, isAdmin,
+        newCommentAuthor, newCommentContent,
+        replyInputVisible, replyAuthor, replyContent,
+        sortedComments,
+        modal, closeModal,
+        openCreateTopicFlow, openEditTopicModal,
+        goToDetail, formatTime, getCommentCount,
+        hasLiked, toggleLike, togglePin,
+        submitComment, submitReply, toggleReplyInput,
+        deleteComment, deleteReply,
+        toastMessage,
+      };
+    }
+  });
+  app.mount('#app');
+</script>
+</body>
+</html>
